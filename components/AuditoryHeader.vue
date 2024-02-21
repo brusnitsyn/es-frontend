@@ -1,0 +1,331 @@
+<script lang="ts" setup>
+const props = defineProps({
+  auditory: Object
+})
+
+const isOpenEditAuditory = ref(false)
+
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import * as z from 'zod'
+
+const emits = defineEmits(['success'])
+
+const boardTypes = ref(null)
+const boardSizes = ref(null)
+
+const selectedBoardSize = ref(1)
+const selectedBoardType = ref(1)
+const isOpenBoardDialog = ref(false)
+
+const auditorySchema = toTypedSchema(z.object({
+  id: z.number().optional(),
+  title: z.string().min(2).max(240),
+  number: z.string().min(1).max(10),
+  corpus_id: z.number(),
+  feature: z.object({
+    capacity: z.number(),
+    computers_count: z.number().default(0),
+    multimedia: z.boolean().default(false).optional(),
+    interact_board: z.boolean().default(false).optional(),
+    features: z.string().max(240).optional().nullable(),
+    boards: z.array(z.object({
+      board_size_id: z.number().optional(),
+      name_size: z.string().optional(),
+      board_type_id: z.number().optional(),
+      name_type: z.string().optional(),
+    }).optional()).optional().default([])
+  }),
+}))
+
+const form = useForm({
+  validationSchema: auditorySchema,
+})
+
+const addNewBoard = () => {
+  if (selectedBoardSize.value !== 0 &&
+    selectedBoardType.value !== 0) {
+    form.setValues({feature: { boards: [...<[]>form.values.feature.boards, { 'board_size_id': selectedBoardSize.value.id, 'board_type_id': selectedBoardType.value.id, name_size: selectedBoardSize.value.name, name_type: selectedBoardType.value.name }] }}, false)
+    isOpenBoardDialog.value = false
+    selectedBoardSize.value = 1
+    selectedBoardType.value = 1
+  }
+}
+
+const removeBoard = (boardIndex:number) => {
+  const boards = form.values.feature.boards.map(a => ({...a}));//.splice(boardIndex, 1)
+  boards.splice(boardIndex, 1)
+  form.setValues({feature: {boards}}, false)
+}
+
+const onSubmit = form.handleSubmit((values) => {
+  const fetch = updateAuditory(values)
+})
+
+const updateAuditory = async (values: object) => {
+  const { status } = await useFetch('http://127.0.0.1:8000/api/audiences/update', {
+    method: 'POST',
+    body: values
+  })
+
+  if (status.value === 'success') emits('success')
+}
+
+
+const corpuses = ref<[]|null>(null)
+const auditoryData = ref({})
+
+const openDialog = async () => {
+  await useFetch('http://127.0.0.1:8000/api/corpus').then((response) => {
+    corpuses.value = <[]>response.data.value
+  })
+  await useFetch('http://127.0.0.1:8000/api/audiences/board/types').then((response) => {
+    boardTypes.value = <[]>response.data.value
+  })
+  await useFetch('http://127.0.0.1:8000/api/audiences/board/sizes').then((response) => {
+    boardSizes.value = <[]>response.data.value
+    console.log(response.data)
+  })
+
+  let dataValue = {}
+
+  const { data, error: audienceFeatureError } = await useAsyncData(
+    'audienceFeature',
+    () => $fetch(`http://127.0.0.1:8000/api/audiences/feature`, {
+      params: {
+        audienceId: props.auditory?.id,
+      }
+    })
+  )
+
+  if(audienceFeatureError.value)
+    dataValue = { 'feature': {} }
+  else
+    dataValue = { 'feature': data.value.data }
+  auditoryData.value = {...props.auditory, ...dataValue} //Object.assign(props.auditory, data)
+  // await auditorySchema.parse(auditoryData.value).then(res => {
+  //   console.log(res)
+  // })
+  form.setValues(auditoryData.value, false)
+  isOpenEditAuditory.value = true
+}
+</script>
+
+<template>
+  <ContextMenu>
+    <ContextMenuTrigger as="div" class="w-auto flex items-center justify-center select-none">
+      <div v-if="auditory">
+        <span>{{ auditory.number }}</span>
+      </div>
+    </ContextMenuTrigger>
+    <ContextMenuContent>
+      <ContextMenuItem @click="openDialog()">Редактировать аудиторию</ContextMenuItem>
+    </ContextMenuContent>
+  </ContextMenu>
+
+  <Dialog v-model:open="isOpenEditAuditory">
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Редактировать аудиторию ({{ auditory.number }})</DialogTitle>
+        <DialogDescription>
+          Заполните поля ниже
+        </DialogDescription>
+      </DialogHeader>
+      <form @submit="onSubmit">
+        <div class="space-y-2 max-h-[620px] overflow-y-scroll">
+          <FormField name="id" class="hidden" />
+          <FormField v-slot="{ componentField }" name="title">
+            <FormItem>
+              <FormLabel>Наименование</FormLabel>
+              <FormControl>
+                <Input type="text" placeholder="Аудитория 230/1" v-bind="componentField" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+          <FormField v-slot="{ componentField }" name="number">
+            <FormItem>
+              <FormLabel>Цифровое обозначение</FormLabel>
+              <FormControl>
+                <Input type="text" placeholder="230/1" v-bind="componentField" />
+              </FormControl>
+              <FormDescription>
+                Используется для обозначения в таблице.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+          <FormField v-slot="{ componentField }" name="corpus_id">
+            <FormItem>
+              <FormLabel>Привязка к корпусу</FormLabel>
+              <FormControl>
+                <Select v-bind="componentField">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите корпус" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem v-for="corpus in corpuses.data" :value="corpus.id">
+                        {{ corpus.name }}
+                      </SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+          <div>
+            <Separator class="my-4 mb-3" />
+          </div>
+          <FormField v-slot="{ componentField }" name="feature.capacity">
+            <FormItem>
+              <FormLabel>Вместимость аудитории</FormLabel>
+              <FormControl>
+                <Input type="number" placeholder="30" v-bind="componentField" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+          <FormField v-slot="{ componentField }" name="feature.features">
+            <FormItem>
+              <FormLabel>Особенности</FormLabel>
+              <FormControl>
+                <Input type="text" placeholder="VR, нет доски" v-bind="componentField" />
+              </FormControl>
+              <FormDescription>
+                Укажите ключевые особенности аудитории через запятую.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+          <FormField v-slot="{ componentField }" name="feature.computers_count">
+            <FormItem>
+              <FormLabel>Количество компьютеров</FormLabel>
+              <FormControl>
+                <Input type="number" placeholder="15" v-bind="componentField" />
+              </FormControl>
+              <FormDescription>
+                Оставьте 0, если компьютеров нет в аудитории.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+          <FormField v-slot="{ componentField }" name="feature.boards">
+            <FormItem>
+              <div class="flex justify-between items-center">
+                <FormLabel>Доски</FormLabel>
+                <Dialog v-model:open="isOpenBoardDialog">
+                  <DialogTrigger asChild>
+                    <p class="text-sm cursor-pointer" @click="isOpenBoardDialog = true">Добавить</p>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Добавить доску</DialogTitle>
+                      <DialogDescription>
+                        Выберите размер и тип доски.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div class="flex items-center space-x-2">
+                      <Select v-model="selectedBoardSize">
+                        <SelectTrigger>
+                          <SelectValue placeholder="Выберите размер" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem v-for="boardSize in boardSizes" :value="boardSize">
+                            {{ boardSize.name }}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select v-model="selectedBoardType">
+                        <SelectTrigger>
+                          <SelectValue placeholder="Выберите тип" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem v-for="boardType in boardTypes" :value="boardType">
+                            {{ boardType.name }}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <DialogFooter class="sm:justify-start">
+                      <DialogClose as-child>
+                        <Button type="button" variant="secondary">
+                          Отмена
+                        </Button>
+                      </DialogClose>
+                      <Button @click="addNewBoard">
+                        Добавить
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <FormControl>
+                <ScrollArea class="h-28 w-full rounded-md border">
+                  <div v-if="form.values.feature?.boards.length" class="p-4">
+                    <div v-for="(board, index) in form.values.feature.boards" :key="board">
+                      <div class="text-sm flex justify-between items-center">
+                        <p class="first-letter:capitalize">{{ board.name_size }} {{ board.name_type }}</p>
+                        <Icon name="i-tabler-trash" size="16" @click="removeBoard(index)" class="cursor-pointer" />
+                      </div>
+                      <Separator class="my-2" />
+                    </div>
+                  </div>
+                  <div v-else class="p-7 w-full">
+                    <div class="flex flex-col gap-y-0.5 items-center justify-center">
+                      <Icon name="i-mdi-border-none-variant" size="28" class="text-muted-foreground" />
+                      <p class="text-sm text-muted-foreground">Нет досок.</p>
+                    </div>
+                  </div>
+                </ScrollArea>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+          <FormField v-slot="{ componentField }" name="feature.multimedia">
+            <FormItem>
+              <FormControl>
+                <div class="flex items-center space-x-2">
+                  <Checkbox id="multimedia" />
+                  <label
+                    for="multimedia"
+                    class="block text-sm tracking-tight font-medium text-foreground text-left select-none cursor-pointer"
+                  >
+                    Мультимедиа
+                  </label>
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+          <FormField v-slot="{ componentField }" name="feature.interact_board">
+            <FormItem>
+              <FormControl>
+                <div class="flex items-center space-x-2">
+                  <Checkbox id="interact_board" />
+                  <label
+                    for="interact_board"
+                    class="block text-sm tracking-tight font-medium text-foreground text-left select-none cursor-pointer"
+                  >
+                    Интерактивная доска
+                  </label>
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+        </div>
+        <div class="flex justify-end">
+          <Button type="submit">
+            Обновить
+          </Button>
+        </div>
+      </form>
+    </DialogContent>
+  </Dialog>
+</template>
+
+<style scoped>
+
+</style>
