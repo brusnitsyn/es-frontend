@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 import type {ColumnFiltersState, SortingState, VisibilityState,} from '@tanstack/vue-table'
 import {
   createColumnHelper,
@@ -15,13 +14,10 @@ import {format} from 'date-fns'
 import {ru} from 'date-fns/locale'
 
 
-import {cn, valueUpdater} from '@/utils'
-import {Button} from '@/components/ui/button'
+import {cn} from '@/utils'
 import {Calendar as CalendarIcon} from 'lucide-vue-next'
-import {Calendar} from '@/components/ui/calendar'
-import {Popover, PopoverContent, PopoverTrigger,} from '@/components/ui/popover'
 import CustomCell from '@/components/Cell.vue'
-import AuditoryHeader from "@/components/AuditoryHeader.vue";
+import AuditoryHeader from "@/components/AuditoryHeader.vue"
 
 const tableStore = useTableStore()
 const { selectedTableFilling, isSelectedTableFilling, selectedTableFillingType } = storeToRefs(tableStore)
@@ -36,7 +32,7 @@ const { data: defaultTableData, error: defaultTableDataError } = await useAsyncD
   () => $fetch(`http://127.0.0.1:8000/api/table/default`)
 )
 
-const { data: auditories, error: auditoriesError } = await useAsyncData(
+const { data: auditories, error: auditoriesError } = await useAsyncData<{data:[]}>(
   'auditories',
   () => $fetch(`http://127.0.0.1:8000/api/audiences`, {
     params: {
@@ -83,16 +79,12 @@ const { data: tableData, error: tableError } = await useAsyncData(
 }
 )
 
-const sorting = ref<SortingState>([])
-const columnFilters = ref<ColumnFiltersState>([])
-const columnVisibility = ref<VisibilityState>({})
-const rowSelection = ref({})
 const isOpenedFillableDialog = ref(false)
 
 const columns = ref([])
 
 const getDefaultColumns = () => {
-  const auditoryColumns = auditories.value.data.map((item: object) => {
+  const auditoryColumns = auditories.value?.data.map((item: object) => {
     return columnHelper.accessor(item.number, {
       header: h(AuditoryHeader, { auditory: item }),
       footer: props => props.column.id,
@@ -136,23 +128,14 @@ const table = useVueTable({
   getPaginationRowModel: getPaginationRowModel(),
   getSortedRowModel: getSortedRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
-  // onSortingChange: updaterOrValue => valueUpdater(updaterOrValue, sorting),
-  // onColumnFiltersChange: updaterOrValue => valueUpdater(updaterOrValue, columnFilters),
-  // onColumnVisibilityChange: updaterOrValue => valueUpdater(updaterOrValue, columnVisibility),
-  // onRowSelectionChange: updaterOrValue => valueUpdater(updaterOrValue, rowSelection),
-  // state: {
-  //   get sorting() { return sorting.value },
-  //   get columnFilters() { return columnFilters.value },
-  //   get columnVisibility() { return columnVisibility.value },
-  //   get rowSelection() { return rowSelection.value },
-  // },
+})
+
+definePageMeta({
+    layout: 'workspace'
 })
 </script>
 
 <template>
-  <div class="px-4 py-3">
-    <LayoutAdminSidebar />
-
     <div class="w-full">
       <div class="flex gap-2 justify-between items-center py-4 flex-col md:flex-row">
         <div class="flex w-full md:w-auto items-center md:justify-center gap-x-2">
@@ -252,5 +235,4 @@ const table = useVueTable({
       </div>
 
     </div>
-  </div>
 </template>

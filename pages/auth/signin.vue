@@ -1,12 +1,4 @@
 <script setup lang="ts">
-import {
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage
-} from '@/components/ui/form'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import * as z from 'zod'
@@ -34,7 +26,7 @@ const signIn = async (values: object) => {
 
   if (status.value === 'success') {
     authStore.setToken(data.value.token)
-    useRouter().push('/')
+    await useRouter().push('/dashboard')
   }
 }
 

@@ -230,35 +230,25 @@ const { data: corpuses } = await useFetch('http://127.0.0.1:8000/api/corpus')
               <FormMessage />
             </FormItem>
           </FormField>
-          <FormField v-slot="{ componentField }" name="feature.multimedia">
-            <FormItem>
+          <FormField v-slot="{ value, handleChange }" type="checkbox" name="feature.multimedia">
+            <FormItem class="flex flex-row items-start space-x-3 space-y-0">
               <FormControl>
-                <div class="flex items-center space-x-2">
-                  <Checkbox id="multimedia" />
-                  <label
-                    for="multimedia"
-                    class="block text-sm tracking-tight font-medium text-foreground text-left select-none cursor-pointer"
-                  >
-                    Мультимедиа
-                  </label>
-                </div>
+                <Checkbox :value="value" @update:checked="handleChange" />
               </FormControl>
+              <FormLabel class="font-normal">
+                Мультимедиа
+              </FormLabel>
               <FormMessage />
             </FormItem>
           </FormField>
-          <FormField v-slot="{ componentField }" name="feature.interact_board">
-            <FormItem>
+          <FormField v-slot="{ value, handleChange }" type="checkbox" name="feature.interact_board">
+            <FormItem class="flex flex-row items-start space-x-3 space-y-0">
               <FormControl>
-                <div class="flex items-center space-x-2">
-                  <Checkbox id="interact_board" />
-                  <label
-                    for="interact_board"
-                    class="block text-sm tracking-tight font-medium text-foreground text-left select-none cursor-pointer"
-                  >
-                    Интерактивная доска
-                  </label>
-                </div>
+                <Checkbox id="interact_board" :value="value" @update:checked="handleChange" />
               </FormControl>
+              <FormLabel class="font-normal">
+                Интерактивная доска
+              </FormLabel>
               <FormMessage />
             </FormItem>
           </FormField>
