@@ -131,7 +131,8 @@ const table = useVueTable({
 })
 
 definePageMeta({
-    layout: 'workspace'
+  layout: 'workspace',
+  middleware: 'auth'
 })
 </script>
 

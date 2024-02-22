@@ -1,7 +1,5 @@
 <script setup lang="ts">
-    definePageMeta({
-        layout: 'admin'
-    })
+  navigateTo('/dashboard')
 </script>
 
 <template>
