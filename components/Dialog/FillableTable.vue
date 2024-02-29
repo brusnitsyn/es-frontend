@@ -28,7 +28,7 @@ const setActiveFacultyToFillable = (faculty: object) => {
 
 const setActiveAnotherFillToFillable = (anotherFill: object) => {
   selectedTableFilling.value = anotherFill
-  if (anotherFill.id === 6) selectedTableFillingType.value = 'empty'
+  if (anotherFill.id === 7) selectedTableFillingType.value = 'empty'
   else selectedTableFillingType.value = 'another'
   if (isSelectedTableFilling) {
     emits('close')
